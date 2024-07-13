@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/oxidizer_cli",
+    "crates/oxidizer_engine",
+    "crates/oxidizer_daemon",
+    "crates/oxidizer_protocol",
+    "crates/oxidizer_analysis",
+]
+
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Jorge Osorio <joheosmo@gmail.com>"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/JorgeO3/oxidizer"
+
+
+[workspace.dependencies]
