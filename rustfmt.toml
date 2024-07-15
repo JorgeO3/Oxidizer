@@ -1,0 +1,5 @@
+
+# this is rustfmt.toml
+# Helpme with a rule for get ifs in one line
+
+single_line_if_else_max_width = 80

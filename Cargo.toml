@@ -4,8 +4,8 @@ members = [
     "crates/oxidizer_cli",
     "crates/oxidizer_engine",
     "crates/oxidizer_daemon",
-    "crates/oxidizer_protocol",
-    "crates/oxidizer_analysis",
+    # "crates/oxidizer_protocol",
+    # "crates/oxidizer_analysis",
 ]
 
 
@@ -18,3 +18,8 @@ repository = "https://github.com/JorgeO3/oxidizer"
 
 
 [workspace.dependencies]
+log = { version = "*" }
+anyhow = { version = "*" }
+thiserror = { version = "*" }
+env_logger = { version = "*" }
+clap = { version = "*", features = ["derive"] }

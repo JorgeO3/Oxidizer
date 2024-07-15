@@ -1,0 +1,20 @@
+[package]
+name = "oxi"
+description = "Oxidizer CLI"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "oxidizer"
+
+[dependencies]
+log = { workspace = true }
+clap = { workspace = true }
+thiserror = { workspace = true }
+env_logger = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
