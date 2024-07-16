@@ -5,24 +5,24 @@ mod cli;
 mod error;
 mod prelude;
 
-use build_system::{CompilationRecipe, CompilationStep};
-use cli::{AnalyzeArgs, BenchmarkArgs, Cli, Command, DaemonAction, Parser};
+use build_system::{CompilationRecipe, CompilationStep, Compiler, Language};
+use cli::{AnalyzeArgs, BenchmarkArgs, BuilderSystem, Cli, Command, DaemonAction, Parser};
 pub use prelude::*;
 
 pub struct Oxidizer {
     verbose: bool,
     command: Command,
     config: Option<PathBuf>,
-    build_system: String,
+    compiler: Compiler,
 }
 
 impl Oxidizer {
-    pub fn new(cli: Cli) -> Self {
+    pub fn new(cli: Cli, compiler: Compiler) -> Self {
         Self {
             config: cli.config,
             command: cli.command,
             verbose: cli.verbose,
-            build_system: String::default(),
+            compiler,
         }
     }
 
@@ -45,10 +45,14 @@ impl Oxidizer {
     }
 
     fn benchmark(&self, args: &BenchmarkArgs) -> Result<()> {
-        for file in &args.files {
-            println!("Benchmarking {:?} as {:?}", file.path, file.file_type);
+        for target in &args.targets {
+            match target.tool {
+                BuilderSystem::Cargo => todo!(),
+                BuilderSystem::Cmake => todo!(),
+                BuilderSystem::Clang => todo!(),
+                BuilderSystem::Gcc => todo!(),
+            }
         }
-        Ok(())
     }
 
     fn analyze(&self, args: &AnalyzeArgs) -> Result<()> {
@@ -69,15 +73,6 @@ impl Oxidizer {
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
-
-    let cpp_recipe = CompilationRecipe::new("cpp")
-        .add_step(CompilationStep::Compile("program.cpp".into()))
-        .
-        .add_step(CompilationStep::Output("program".into()));
-
-    let oxidizer = Oxidizer::new(cli);
-    let data: &[u8] = &[];
-
     Ok(())
 }
 
@@ -89,3 +84,6 @@ pub fn run() -> Result<()> {
 // Check the status of the server
 // Create the benchmarking configurations for the server
 // Receive the results from the server
+
+// Examples commands
+// oxi -v benchmark main.rs:cargo:O3,target-cpu=native main.cpp:cmake main.c:gcc --flamegraph --call-graph --perf-metrics --analyze-latency

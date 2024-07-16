@@ -1,6 +1,7 @@
 use clap::{Args, Subcommand};
 use std::path::PathBuf;
 use std::str::FromStr;
+use struct_iterable::Iterable;
 
 pub use clap::Parser;
 
@@ -54,17 +55,120 @@ pub struct AnalyzeArgs {
     pub output: Option<PathBuf>,
 }
 
-#[derive(Args, Debug)]
+#[derive(Debug, Clone)]
+pub enum TimeUnit {
+    Seconds,
+    Milliseconds,
+    Microseconds,
+    Nanoseconds,
+}
+impl FromStr for TimeUnit {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "s" => Ok(TimeUnit::Seconds),
+            "ms" => Ok(TimeUnit::Milliseconds),
+            "us" => Ok(TimeUnit::Microseconds),
+            "ns" => Ok(TimeUnit::Nanoseconds),
+            _ => Err(format!("Unsupported time unit: {}", s)),
+        }
+    }
+}
+
+#[derive(Args, Debug, Iterable)]
 pub struct BenchmarkArgs {
     /// Files to benchmark with their types
-    #[arg(required = true, num_args = 1.., value_parser = parse_file_with_type)]
-    pub files: Vec<FileWithType>,
-    /// Number of iterations
-    #[arg(short, long, default_value = "1")]
-    pub iterations: u32,
-    /// Output file for benchmark results
-    #[arg(short, long, value_name = "FILE")]
-    pub output: Option<PathBuf>,
+    #[arg(required = true, num_args = 1.., value_parser = parse_benchmark_target)]
+    pub targets: Vec<BenchmarkTarget>,
+
+    /// Number of benchmark runs
+    #[arg(short = 'r', long, default_value = "10")]
+    pub runs: u32,
+
+    /// Number of warmup runs
+    #[arg(short = 'w', long, default_value = "0")]
+    pub warmup: u32,
+
+    /// Preparation command
+    #[arg(long)]
+    pub prepare: Option<String>,
+
+    /// Cleanup command
+    #[arg(long)]
+    pub cleanup: Option<String>,
+
+    /// Time unit for results
+    #[arg(long, value_parser = parse_duration)]
+    pub time_unit: Option<TimeUnit>,
+
+    /// Export results to JSON
+    #[arg(long)]
+    pub export_json: Option<PathBuf>,
+
+    /// Export results to Markdown
+    #[arg(long)]
+    pub export_markdown: Option<PathBuf>,
+
+    /// Export results to CSV
+    #[arg(long)]
+    pub export_csv: Option<PathBuf>,
+
+    /// Ignore command failures
+    #[arg(long)]
+    pub ignore_failure: bool,
+
+    /// Timeout for each run (in seconds)
+    #[arg(long)]
+    pub timeout: Option<u64>,
+
+    /// Measure memory usage
+    #[arg(long)]
+    pub measure_memory: bool,
+
+    /// Show relative comparison
+    #[arg(long)]
+    pub relative_comparison: bool,
+
+    /// Enable detailed performance metrics
+    #[arg(long)]
+    pub perf_metrics: bool,
+
+    /// Perf events to record (comma-separated)
+    #[arg(long, use_value_delimiter = true)]
+    pub perf_events: Option<Vec<String>>,
+
+    /// Perf sampling frequency (Hz)
+    #[arg(long, default_value = "999")]
+    pub sampling_frequency: u32,
+
+    /// Generate flamegraph
+    #[arg(long)]
+    pub flamegraph: bool,
+
+    /// Generate call graph
+    #[arg(long)]
+    pub call_graph: bool,
+
+    /// Annotate source code with perf data
+    #[arg(long)]
+    pub annotate_source: bool,
+
+    /// Enable system-wide profiling
+    #[arg(long)]
+    pub system_wide: bool,
+
+    /// Analyze scheduler latency
+    #[arg(long)]
+    pub analyze_latency: bool,
+
+    /// Custom perf record options
+    #[arg(long)]
+    pub perf_record_options: Option<String>,
+
+    /// Custom perf report options
+    #[arg(long)]
+    pub perf_report_options: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -80,39 +184,105 @@ pub enum DaemonAction {
 }
 
 #[derive(Debug, Clone)]
-pub struct FileWithType {
+pub struct BenchmarkTarget {
     pub path: PathBuf,
-    pub file_type: FileType,
+    pub tool: BuilderSystem,
+    pub compiler_flags: Option<Vec<String>>,
+}
+impl FromStr for BenchmarkTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split(':').collect();
+        if parts.len() < 2 {
+            return Err(
+                "File must be specified as 'path:type[:opt_level][,flag1,flag2,...]'".to_string(),
+            );
+        }
+        let path = PathBuf::from(parts[0]);
+        let tool = BuilderSystem::from_str(parts[1])?;
+        let mut compiler_flags = None;
+
+        if parts.len() > 2 {
+            let options: Vec<&str> = parts[2].split(',').collect();
+            if options.len() > 1 {
+                compiler_flags = Some(options.iter().map(|&s| s.to_string()).collect());
+            }
+        }
+
+        Ok(BenchmarkTarget::new(path, tool, compiler_flags))
+    }
+}
+impl BenchmarkTarget {
+    pub fn new(path: PathBuf, tool: BuilderSystem, compiler_flags: Option<Vec<String>>) -> Self {
+        Self {
+            path,
+            tool,
+            compiler_flags,
+        }
+    }
+}
+
+fn parse_benchmark_target(s: &str) -> std::result::Result<BenchmarkTarget, String> {
+    BenchmarkTarget::from_str(s)
 }
 
 #[derive(Debug, Clone)]
-pub enum FileType {
-    Rust,
-    C,
-    Cpp,
-    Go,
+pub enum BuilderSystem {
+    Cargo,
+    Cmake,
+    Clang,
+    Gcc,
 }
 
-impl FromStr for FileType {
+impl FromStr for BuilderSystem {
     type Err = String;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "rust" => Ok(FileType::Rust),
-            "cpp" => Ok(FileType::Cpp),
-            "c" => Ok(FileType::C),
-            "go" => Ok(FileType::Go),
+            "cargo" => Ok(BuilderSystem::Cargo),
+            "cmake" => Ok(BuilderSystem::Cmake),
+            "clang" => Ok(BuilderSystem::Clang),
+            "gcc" => Ok(BuilderSystem::Gcc),
             _ => Err(format!("Unsupported file type: {}", s)),
         }
     }
 }
 
-fn parse_file_with_type(s: &str) -> std::result::Result<FileWithType, String> {
-    let parts: Vec<&str> = s.split(':').collect();
-    if parts.len() != 2 {
-        return Err("File must be specified as 'path:type'".to_string());
-    }
-    let path = PathBuf::from(parts[0]);
-    let file_type = FileType::from_str(parts[1])?;
-    Ok(FileWithType { path, file_type })
+fn parse_file_with_type(s: &str) -> std::result::Result<BenchmarkTarget, String> {
+    BenchmarkTarget::from_str(s)
 }
+
+fn parse_duration(s: &str) -> std::result::Result<TimeUnit, String> {
+    TimeUnit::from_str(s)
+}
+
+// #[derive(Debug, Default)]
+// struct PerfMetrics {
+//     cpu_cycles: u64,
+//     instructions: u64,
+//     cache_misses: u64,
+//     branch_misses: u64,
+//     page_faults: u64,
+//     context_switches: u64,
+//     cpu_migrations: u64,
+//     io_operations: u64,
+//     memory_bandwidth: f64,
+//     frontend_stalls: u64,
+//     backend_stalls: u64,
+// }
+
+// #[derive(Debug, Default)]
+// struct HighPerformanceMetrics {
+//     instructions: u64,
+//     cpu_cycles: u64,
+//     ipc: f64,
+//     l1_cache_misses: u64,
+//     llc_misses: u64,
+//     branch_mispredictions: u64,
+//     frontend_stall_cycles: u64,
+//     backend_stall_cycles: u64,
+//     flops: f64,
+//     memory_bandwidth: f64,
+//     page_faults: u64,
+// }

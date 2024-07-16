@@ -15,6 +15,7 @@ log = { workspace = true }
 clap = { workspace = true }
 thiserror = { workspace = true }
 env_logger = { workspace = true }
+struct_iterable = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
