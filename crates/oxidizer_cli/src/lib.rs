@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 mod build_system;
 mod cli;
+mod commands;
 mod error;
 mod prelude;
 
@@ -45,14 +46,15 @@ impl Oxidizer {
     }
 
     fn benchmark(&self, args: &BenchmarkArgs) -> Result<()> {
-        for target in &args.targets {
-            match target.tool {
-                BuilderSystem::Cargo => todo!(),
-                BuilderSystem::Cmake => todo!(),
-                BuilderSystem::Clang => todo!(),
-                BuilderSystem::Gcc => todo!(),
-            }
-        }
+        // for target in &args.targets {
+        //     match target.tool {
+        //         BuilderSystem::Cargo => todo!(),
+        //         BuilderSystem::Cmake => todo!(),
+        //         BuilderSystem::Clang => todo!(),
+        //         BuilderSystem::Gcc => todo!(),
+        //     }
+        // }
+        todo!()
     }
 
     fn analyze(&self, args: &AnalyzeArgs) -> Result<()> {
@@ -73,6 +75,7 @@ impl Oxidizer {
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
+
     Ok(())
 }
 
@@ -84,6 +87,8 @@ pub fn run() -> Result<()> {
 // Check the status of the server
 // Create the benchmarking configurations for the server
 // Receive the results from the server
+// Package single files or entire projects
 
 // Examples commands
 // oxi -v benchmark main.rs:cargo:O3,target-cpu=native main.cpp:cmake main.c:gcc --flamegraph --call-graph --perf-metrics --analyze-latency
+// oxi -v benchmark path1:mode1:tool1:args1 path2:mode2:tool2:args2 ... pathN:modeN:toolN:argsN  flag1,flag2,flag3,...,flagN

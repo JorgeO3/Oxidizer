@@ -1,6 +1,6 @@
 [package]
 name = "oxi"
-description = "Oxidizer CLI"
+description = "A distributed adaptive benchmarking system"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

@@ -16,7 +16,6 @@ oxidizer analyze input.json --output analysis.txt
     name = "Oxidizer",
     version,
     about = "Distributed Adaptive Benchmarking System",
-    long_about = None,
     after_help = EXAMPLES,
 )]
 pub struct Cli {
@@ -37,7 +36,7 @@ pub enum Command {
     /// Analyze benchmark results
     Analyze(AnalyzeArgs),
     /// Run benchmarks and compare programs
-    Benchmark(BenchmarkArgs),
+    Benchmark(Box<BenchmarkArgs>),
     /// Manage the benchmarking daemon
     Daemon {
         #[command(subcommand)]
@@ -72,6 +71,23 @@ impl FromStr for TimeUnit {
             "us" => Ok(TimeUnit::Microseconds),
             "ns" => Ok(TimeUnit::Nanoseconds),
             _ => Err(format!("Unsupported time unit: {}", s)),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ProjectType {
+    Standalone,
+    Workspace,
+}
+impl FromStr for ProjectType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "s" | "standalone" => Ok(ProjectType::Standalone),
+            "w" | "workspace" => Ok(ProjectType::Workspace),
+            _ => Err(format!("Unsupported project type: {}", s)),
         }
     }
 }
@@ -187,43 +203,44 @@ pub enum DaemonAction {
 pub struct BenchmarkTarget {
     pub path: PathBuf,
     pub tool: BuilderSystem,
+    pub mode: ProjectType,
     pub compiler_flags: Option<Vec<String>>,
 }
 impl FromStr for BenchmarkTarget {
     type Err = String;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split(':').collect();
-        if parts.len() < 2 {
-            return Err(
-                "File must be specified as 'path:type[:opt_level][,flag1,flag2,...]'".to_string(),
-            );
-        }
-        let path = PathBuf::from(parts[0]);
-        let tool = BuilderSystem::from_str(parts[1])?;
-        let mut compiler_flags = None;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split(':');
 
-        if parts.len() > 2 {
-            let options: Vec<&str> = parts[2].split(',').collect();
-            if options.len() > 1 {
-                compiler_flags = Some(options.iter().map(|&s| s.to_string()).collect());
-            }
+        let path = PathBuf::from(parts.next().ok_or("Missing path")?);
+        let mode = ProjectType::from_str(parts.next().ok_or("Missing mode")?)?;
+        let tool = BuilderSystem::from_str(parts.next().ok_or("Missing tool")?)?;
+
+        let compiler_flags = parts
+            .next()
+            .map(|flags| {
+                flags
+                    .split(',')
+                    .filter(|&s| !s.is_empty())
+                    .map(String::from)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|v| !v.is_empty());
+
+        if parts.next().is_some() {
+            return Err("Too many parts in the input string".into());
         }
 
-        Ok(BenchmarkTarget::new(path, tool, compiler_flags))
-    }
-}
-impl BenchmarkTarget {
-    pub fn new(path: PathBuf, tool: BuilderSystem, compiler_flags: Option<Vec<String>>) -> Self {
-        Self {
+        Ok(Self {
             path,
+            mode,
             tool,
             compiler_flags,
-        }
+        })
     }
 }
 
-fn parse_benchmark_target(s: &str) -> std::result::Result<BenchmarkTarget, String> {
+fn parse_benchmark_target(s: &str) -> Result<BenchmarkTarget, String> {
     BenchmarkTarget::from_str(s)
 }
 
@@ -238,7 +255,7 @@ pub enum BuilderSystem {
 impl FromStr for BuilderSystem {
     type Err = String;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "cargo" => Ok(BuilderSystem::Cargo),
             "cmake" => Ok(BuilderSystem::Cmake),
@@ -249,11 +266,7 @@ impl FromStr for BuilderSystem {
     }
 }
 
-fn parse_file_with_type(s: &str) -> std::result::Result<BenchmarkTarget, String> {
-    BenchmarkTarget::from_str(s)
-}
-
-fn parse_duration(s: &str) -> std::result::Result<TimeUnit, String> {
+fn parse_duration(s: &str) -> Result<TimeUnit, String> {
     TimeUnit::from_str(s)
 }
 
