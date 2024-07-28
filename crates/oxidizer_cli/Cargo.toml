@@ -1,6 +1,6 @@
 [package]
 name = "oxi"
-description = "A distributed adaptive benchmarking system"
+description = "Oxidizer - A distributed adaptive benchmarking system."
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

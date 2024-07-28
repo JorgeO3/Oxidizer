@@ -3,3 +3,6 @@
 # Helpme with a rule for get ifs in one line
 
 single_line_if_else_max_width = 80
+imports_granularity = "Module"
+reorder_imports = true
+group_imports = "StdExternalCrate"

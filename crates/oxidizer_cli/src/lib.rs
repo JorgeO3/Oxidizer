@@ -6,36 +6,24 @@ mod commands;
 mod error;
 mod prelude;
 
-use build_system::{CompilationRecipe, CompilationStep, Compiler, Language};
-use cli::{AnalyzeArgs, BenchmarkArgs, BuilderSystem, Cli, Command, DaemonAction, Parser};
+use cli::{Cli, Command, Parser};
 pub use prelude::*;
+
+#[derive(Debug, Default, Clone)]
+pub struct Ctx;
 
 pub struct Oxidizer {
     verbose: bool,
     command: Command,
     config: Option<PathBuf>,
-    compiler: Compiler,
 }
 
 impl Oxidizer {
-    pub fn new(cli: Cli, compiler: Compiler) -> Self {
+    pub fn new(cli: Cli) -> Self {
         Self {
             config: cli.config,
             command: cli.command,
             verbose: cli.verbose,
-            compiler,
-        }
-    }
-
-    pub fn run(&self) -> Result<()> {
-        if self.verbose {
-            self.enable_logging()
-        };
-
-        match &self.command {
-            Command::Analyze(args) => self.analyze(args),
-            Command::Benchmark(args) => self.benchmark(args),
-            Command::Daemon { action } => self.daemon(action),
         }
     }
 
@@ -45,38 +33,21 @@ impl Oxidizer {
         env_logger::init();
     }
 
-    fn benchmark(&self, args: &BenchmarkArgs) -> Result<()> {
-        // for target in &args.targets {
-        //     match target.tool {
-        //         BuilderSystem::Cargo => todo!(),
-        //         BuilderSystem::Cmake => todo!(),
-        //         BuilderSystem::Clang => todo!(),
-        //         BuilderSystem::Gcc => todo!(),
-        //     }
-        // }
-        todo!()
-    }
+    pub fn run(&self, ctx: Ctx) -> Result<()> {
+        if self.verbose {
+            self.enable_logging()
+        };
 
-    fn analyze(&self, args: &AnalyzeArgs) -> Result<()> {
-        println!("Analyzing from {:?} to {:?}", args.input, args.output);
-        Ok(())
-    }
-
-    fn daemon(&self, action: &DaemonAction) -> Result<()> {
-        match action {
-            DaemonAction::Start => println!("Starting daemon"),
-            DaemonAction::Stop => println!("Stopping daemon"),
-            DaemonAction::Restart => println!("Restarting daemon"),
-            DaemonAction::Status => println!("Checking daemon status"),
-        }
-        Ok(())
+        self.command.exec(ctx)
     }
 }
 
 pub fn run() -> Result<()> {
+    let ctx = Ctx;
     let cli = Cli::parse();
+    let oxi = Oxidizer::new(cli);
 
-    Ok(())
+    oxi.run(ctx)
 }
 
 // Oxidizer functions
